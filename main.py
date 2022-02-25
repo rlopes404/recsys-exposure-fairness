@@ -73,6 +73,7 @@ else:
     #fair_file = open(f'fair_{dataset_name}.out', 'w')
     out_file = open(f'{dataset_name}_{fairness_constraint}.out', 'w')
     out_file.write('top_percentage,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
+    out_file.flush()
 
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
@@ -95,14 +96,17 @@ else:
             #with open(f'{unfair_name}.out', 'w') as out_file:
             s = f'{top_percentage:.4f},{alpha:.4f},{ndcg1:.4f},{mrr1:.4f},{exp_group1[0]:.4f},{exp_group1[1]:.4f},{avg_exp_group1[0]:.4f},{avg_exp_group1[1]:.4f},{count_group1[0]:.4f},{count_group1[1]:.4f},{pop_group1[0]:.4f},{pop_group1[1]:.4f},{pop:.4f},0\n'
             out_file.write(s)  
+            out_file.flush()
 
             total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(best_model, n_items,test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
 
 
             s = f'{top_percentage:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'
             out_file.write(s)
+            out_file.flush()
             #out_file.write('\n')
             
     #fair_file.close()
     #unfair_file.close()
+    out_file.flush()
     out_file.close()
