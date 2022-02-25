@@ -139,6 +139,9 @@ def train_data_loader(model, train_loader, epochs=10, lr=0.001, wd=0, type=None)
 
 def find_best_model(train_path, valid_path, test_path, emb_size = 30, n_epochs = 200):
 
+    dataset_name = train_path.replace('_train.csv','')
+    out_file = open(f'{dataset_name}_train.log', 'w')
+
     train = pd.read_csv(train_path, sep=',')
     valid = pd.read_csv(valid_path, sep=',')
     test = pd.read_csv(test_path, sep=',')
@@ -173,11 +176,16 @@ def find_best_model(train_path, valid_path, test_path, emb_size = 30, n_epochs =
             #ndcg1, mrr1 = evaluate(model1, user_test_relevance, user_train_items, 5)
 
             mse1 = evaluate_ratings(model, user_train_items, valid)
-            print(f'{_lr:.6f}, {_wd:.6f}, {mse1:.4f}')
+            s = f'{_lr:.6f},{_wd:.6f},{mse1:.4f}\n'
+            out_file.write(s)
+
             if mse1 < best_val_error:
                 best_model = model
                 best_val_error = mse1              
           
+    out_file.flush()
+    out_file.close()
+    
     filename = train_path.replace('_train.csv','')
     pickle.dump(best_model, open(f'{filename}.pkl', 'wb'))
     return best_model
