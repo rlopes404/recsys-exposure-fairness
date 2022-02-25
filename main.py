@@ -71,7 +71,7 @@ else:
     #unfair_file = open(f'unfair_{dataset_name}.out', 'w')
     #fair_file = open(f'fair_{dataset_name}.out', 'w')
     out_file = open(f'{dataset_name}_{fairness_constraint}.out', 'w')
-    out_file.write('top_percentage,alpha,ndcg,mrr,exp_0,exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
+    out_file.write('top_percentage,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
 
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
