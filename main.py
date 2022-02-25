@@ -1,5 +1,6 @@
 #wget https://packages.gurobi.com/9.5/gurobi9.5.1_linux64.tar.gz
-#grbgetkey 1f2ff6d8-95a4-11ec-9ce8-0242ac120004
+# python3 main.py --train_filename=ml1m_5_train.csv --valid_filename=ml1m_5_valid.csv --test_filename=ml1m_5_test.csv --fairness_constraint=1
+# python3 main.py --train_filename=ml1m_5_train.csv --valid_filename=ml1m_5_valid.csv --test_filename=ml1m_5_test.csv --train_mode=True
 
 from evaluator import evaluate
 from mf import find_best_model
@@ -76,7 +77,7 @@ else:
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
 
-    for top_percentage in [0.1, 0.3, 0.5]:
+    for top_percentage in [0.1, 0.3, 0.5, 0.7, 0.9]:
         for alpha in [0.1, 0.3, 0.5]:
         #for alpha in [0.1]:
             alpha_vector = [alpha]*n_groups
