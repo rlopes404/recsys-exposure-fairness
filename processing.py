@@ -1,19 +1,28 @@
 import pandas as pd
 
-threshold = 5    
-path = '/home/ramon/Dropbox/rodrigo-alves/code/'
+threshold = 5
+#df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
+#output = f'ml100k_{threshold}'
 
-df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
-output = f'{path}ml100_{threshold}.csv'
-
-# df = pd.read_csv('/home/ramon/Downloads/ml-1m/ratings.dat', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='::')
-# output = f'{path}ml100_{threshold}.csv'
-
+df = pd.read_csv('/home/ramon/Downloads/ml-1m/ratings.dat', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='::')
+output = f'ml1m_{threshold}'
 
 # df = pd.read_csv('/home/ramon/Downloads/Douban-movies/movie/douban_movie.tsv', header=0, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
 # df = df[df['rating'] > -1]
-# output = f'{path}douban_{threshold}.csv'
+# output = f'douban_{threshold}'
 
+
+df = df.drop_duplicates(subset=['user','item', 'timestamp']).sort_values(by=['timestamp']).reset_index(drop=True)
+
+ts_cut = df.loc[int(len(df)*0.8)]['timestamp']
+idx_train = df['timestamp'] <= ts_cut
+
+train = df[idx_train].copy().reset_index(drop=True)
+test = df[~idx_train].copy().reset_index(drop=True)
+
+cutoff = int(0.5*len(test))
+valid = test[:cutoff].copy().reset_index(drop=True)
+test = test[cutoff:].copy().reset_index(drop=True)
 
 def clean_threshold(df, threshold):    
     previous_size = 0
@@ -23,9 +32,34 @@ def clean_threshold(df, threshold):
         df = df.groupby('item').filter(lambda x : len(x) >= threshold)
     return df
 
-final = clean_threshold(df, threshold)
-assert (final.groupby('user').size().min() >= threshold) & (final.groupby('item').size().min() >= threshold)
+train = clean_threshold(train, threshold)
+assert (train.groupby('user').size().min() >= threshold) & (train.groupby('item').size().min() >= threshold)
 
-#final.to_csv(f'{path}ml100_{threshold}.csv', sep=';')
-#final.to_csv(f'{path}ml1m_{threshold}.csv', sep=';')
-final.to_csv(output, sep=';', index=False)
+idx = (test['item'].isin(train['item'])) & (test['user'].isin(train['user']))
+test = test[idx].reset_index(drop=True)
+
+idx = (valid['item'].isin(train['item'])) & (valid['user'].isin(train['user']))
+valid = valid[idx].reset_index(drop=True)
+
+def encode_columns(col):
+    keys = col.unique()
+    key_to_id = {key:idx for idx, key in enumerate(keys)}
+    return key_to_id
+
+u_map = encode_columns(train['user'])
+i_map = encode_columns(train['item'])
+
+train['user_id'] = train['user'].map(u_map)
+train['item_id'] = train['item'].map(i_map)
+
+valid['user_id'] = valid['user'].map(u_map)
+valid['item_id'] = valid['item'].map(i_map)
+
+
+test['user_id'] = test['user'].map(u_map)
+test['item_id'] = test['item'].map(i_map)
+
+cols = ['user_id','item_id','rating']
+train[cols].to_csv(f'{output}_train.csv', sep=',', index=False)
+valid[cols].to_csv(f'{output}_valid.csv', sep=',', index=False)
+test[cols].to_csv(f'{output}_test.csv', sep=',', index=False)
