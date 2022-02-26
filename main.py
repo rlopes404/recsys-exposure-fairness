@@ -14,13 +14,14 @@ import numpy as np
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train_filename',  type=str, default='ml100k_5_train.csv')
-parser.add_argument('--valid_filename', type=str, default='ml100k_5_valid.csv')
-parser.add_argument('--test_filename', type=str, default='ml100k_5_test.csv')
+parser.add_argument('--train_filename',  type=str, default='ml100k-5-train.csv')
+parser.add_argument('--valid_filename', type=str, default='ml100k-5-valid.csv')
+parser.add_argument('--test_filename', type=str, default='ml100k-5-test.csv')
 parser.add_argument('--topK', type=int, default=20)
 parser.add_argument('--n_groups', type=int, default=2)
 parser.add_argument('--fairness_constraint', type=int, default=1)
 parser.add_argument('--train_mode', type=bool, default=False)
+parser.add_argument('--top_ratio', type=int, default=0.1)
 args = parser.parse_args()
 
 train_filename = args.train_filename
@@ -30,8 +31,8 @@ topK = args.topK
 n_groups = args.n_groups
 fairness_constraint = args.fairness_constraint
 train_mode = args.train_mode
-
-dataset_name = train_filename.replace('_train.csv','')
+top_ratio = args.top_ratio
+dataset_name = train_filename.replace('-train.csv','')
 
 train = pd.read_csv(train_filename, sep=',')
 valid = pd.read_csv(valid_filename, sep=',')
@@ -71,40 +72,40 @@ else:
 
     #unfair_file = open(f'unfair_{dataset_name}.out', 'w')
     #fair_file = open(f'fair_{dataset_name}.out', 'w')
-    out_file = open(f'{dataset_name}-{fairness_constraint}.out', 'w')
-    out_file.write('top_percentage,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
+    out_file = open(f'{dataset_name}-{fairness_constraint}-{top_ratio}.out', 'w')
+    out_file.write('top_ratio,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
     out_file.flush()
 
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
 
-    for top_percentage in [0.1, 0.3, 0.5, 0.7, 0.9]:
-        for alpha in [0.1, 0.3, 0.5]:
-        #for alpha in [0.1]:
-            alpha_vector = [alpha]*n_groups
-            
-            print(f'{top_percentage} {alpha}')
-
-            cuttoff = int(len(top_train)*top_percentage)
-            item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
+    #for top_percentage in [0.9, 0.7, 0.5, 0.3, 0.1]:
+    for alpha in [0.1, 0.3, 0.5]:
+    #for alpha in [0.1]:
+        alpha_vector = [alpha]*n_groups
         
-            # unfair ranking
-            ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(best_model, n_items, test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
-            
+        print(f'{top_ratio} {alpha}')
+
+        cuttoff = int(len(top_train)*top_ratio)
+        item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
     
-            #print(ndcg1, mrr1, rank_group1, count_group1)
-            #with open(f'{unfair_name}.out', 'w') as out_file:
-            s = f'{top_percentage:.4f},{alpha:.4f},{ndcg1:.4f},{mrr1:.4f},{exp_group1[0]:.4f},{exp_group1[1]:.4f},{avg_exp_group1[0]:.4f},{avg_exp_group1[1]:.4f},{count_group1[0]:.4f},{count_group1[1]:.4f},{pop_group1[0]:.4f},{pop_group1[1]:.4f},{pop:.4f},0\n'
-            out_file.write(s)  
-            out_file.flush()
+        # unfair ranking
+        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(best_model, n_items, test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
+        
 
-            total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(best_model, n_items,test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
+        #print(ndcg1, mrr1, rank_group1, count_group1)
+        #with open(f'{unfair_name}.out', 'w') as out_file:
+        s = f'{top_ratio:.4f},{alpha:.4f},{ndcg1:.4f},{mrr1:.4f},{exp_group1[0]:.4f},{exp_group1[1]:.4f},{avg_exp_group1[0]:.4f},{avg_exp_group1[1]:.4f},{count_group1[0]:.4f},{count_group1[1]:.4f},{pop_group1[0]:.4f},{pop_group1[1]:.4f},{pop:.4f},0\n'
+        out_file.write(s)  
+        out_file.flush()
+
+        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(best_model, n_items,test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
 
 
-            s = f'{top_percentage:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'
-            out_file.write(s)
-            out_file.flush()
-            #out_file.write('\n')
+        s = f'{top_ratio:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'
+        out_file.write(s)
+        out_file.flush()
+        #out_file.write('\n')
             
     #fair_file.close()
     #unfair_file.close()
