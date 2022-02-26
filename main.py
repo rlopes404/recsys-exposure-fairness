@@ -21,7 +21,7 @@ parser.add_argument('--topK', type=int, default=20)
 parser.add_argument('--n_groups', type=int, default=2)
 parser.add_argument('--fairness_constraint', type=int, default=1)
 parser.add_argument('--train_mode', type=bool, default=False)
-parser.add_argument('--top_ratio', type=int, default=0.9)
+parser.add_argument('--top_ratio', type=float, default=0.9)
 args = parser.parse_args()
 
 train_filename = args.train_filename
