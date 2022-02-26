@@ -2,14 +2,14 @@ import pandas as pd
 
 threshold = 5
 #df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
-#output = f'ml100k_{threshold}'
+#output = f'ml100k-{threshold}'
 
 df = pd.read_csv('/home/ramon/Downloads/ml-1m/ratings.dat', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='::')
-output = f'ml1m_{threshold}'
+output = f'ml1m-{threshold}'
 
 # df = pd.read_csv('/home/ramon/Downloads/Douban-movies/movie/douban_movie.tsv', header=0, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
 # df = df[df['rating'] > -1]
-# output = f'douban_{threshold}'
+# output = f'douban-{threshold}'
 
 
 df = df.drop_duplicates(subset=['user','item', 'timestamp']).sort_values(by=['timestamp']).reset_index(drop=True)
@@ -60,6 +60,6 @@ test['user_id'] = test['user'].map(u_map)
 test['item_id'] = test['item'].map(i_map)
 
 cols = ['user_id','item_id','rating']
-train[cols].to_csv(f'{output}_train.csv', sep=',', index=False)
-valid[cols].to_csv(f'{output}_valid.csv', sep=',', index=False)
-test[cols].to_csv(f'{output}_test.csv', sep=',', index=False)
+train[cols].to_csv(f'{output}-train.csv', sep=',', index=False)
+valid[cols].to_csv(f'{output}-valid.csv', sep=',', index=False)
+test[cols].to_csv(f'{output}-test.csv', sep=',', index=False)

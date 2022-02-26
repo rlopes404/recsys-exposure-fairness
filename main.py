@@ -67,11 +67,11 @@ pop_map = {item : count for item, count in zip(pop['item_id'], pop['popularity']
 if(train_mode):
     best_model = find_best_model(train_filename, valid_filename, test_filename)
 else:
-    best_model =  pickle.load(open(train_filename.replace('_train.csv', '.pkl'), 'rb')) 
+    best_model =  pickle.load(open(train_filename.replace('-train.csv', '.pkl'), 'rb')) 
 
     #unfair_file = open(f'unfair_{dataset_name}.out', 'w')
     #fair_file = open(f'fair_{dataset_name}.out', 'w')
-    out_file = open(f'{dataset_name}_{fairness_constraint}.out', 'w')
+    out_file = open(f'{dataset_name}-{fairness_constraint}.out', 'w')
     out_file.write('top_percentage,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
     out_file.flush()
 
