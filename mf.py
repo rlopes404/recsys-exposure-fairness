@@ -73,8 +73,9 @@ class MF(nn.Module):
 
     def full_predict(self, user):
         #test_item_emb = self.item_emb.weight.view(self.n_items, 1, self.emb_size)
-        scores = torch.matmul(self.user_emb(user), self.item_emb.weight.transpose(0,1)).transpose(1,0) + self.user_biases(user) + self.item_biases.weight
-        return scores 
+        with torch.no_grad():
+            scores = torch.matmul(self.user_emb(user), self.item_emb.weight.transpose(0,1)).transpose(1,0) + self.user_biases(user) + self.item_biases.weight
+            return scores 
         
 
 

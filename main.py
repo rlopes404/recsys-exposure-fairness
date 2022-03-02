@@ -40,11 +40,22 @@ test = pd.read_csv(test_filename, sep=',')
 
 n_items = train['item_id'].nunique()
 
+if fairness_constraint == 1:
+    alpha_values = [0.1, 0.2, 0.3, 0.4] 
+elif fairness_constraint == 2:
+    alpha_values = [0.9, 0.7, 0.5, 0.3, 0.1]
+else:
+    print('fairness constraint is invalid!')    
+
 user_avg_rating = {}
-user_train_items = {}
+user_train_valid_items = {}
 for user_id, group in train.groupby(['user_id']):
     user_avg_rating[user_id] = np.mean(group['rating'].values)
-    user_train_items[user_id] = np.asarray(group['item_id'])
+    user_train_valid_items[user_id] = np.asarray(group['item_id'])
+
+for user_id, group in valid.groupby(['user_id']):
+    if user_id in user_train_valid_items:
+         user_train_valid_items[user_id] = np.concatenate((user_train_valid_items[user_id], np.asarray(group['item_id'])), axis=1)      
 
 def get_items_eval(df):
     user_items = {}
@@ -53,9 +64,10 @@ def get_items_eval(df):
         if user_id in user_avg_rating:
             user_items[user_id] = set(group['item_id'].values)
 
-            idx = group['rating'] >= user_avg_rating[user_id]
-        
-            user_relevant_items[user_id] = set(group.loc[idx, 'item_id'])
+            idx = group['rating'] > user_avg_rating[user_id]
+            if idx.sum() > 0:        
+                user_relevant_items[user_id] = set(group.loc[idx, 'item_id'])
+                
     return user_items, user_relevant_items
     
 test_user_items, test_user_relevant_items = get_items_eval(test)
@@ -79,9 +91,8 @@ else:
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
 
-    #for top_percentage in [0.9, 0.7, 0.5, 0.3, 0.1]:
-    for alpha in [0.1, 0.3, 0.5]:
-    #for alpha in [0.1]:
+    
+    for alpha in alpha_values:
         alpha_vector = [alpha]*n_groups
         
         print(f'{top_ratio} {alpha}')
@@ -90,7 +101,7 @@ else:
         item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
     
         # unfair ranking
-        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(best_model, n_items, test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
+        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
         
 
         #print(ndcg1, mrr1, rank_group1, count_group1)
@@ -99,7 +110,7 @@ else:
         out_file.write(s)  
         out_file.flush()
 
-        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(best_model, n_items,test_user_relevant_items, user_train_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
+        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(best_model, n_items,test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
 
 
         s = f'{top_ratio:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'

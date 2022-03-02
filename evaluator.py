@@ -43,10 +43,10 @@ def ndcg(ranked_relevance, pos_items, at=None):
     return rank_dcg / ideal_dcg    
 
 
-def compute_metrics(model, n_items, user_id, user_train_items, user_test_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     
     y_hat = model.full_predict(torch.LongTensor([user_id])).detach().numpy().squeeze()   
-    y_hat[user_train_items] = -sys.maxsize
+    y_hat[train_valid_items] = -sys.maxsize # user
 
     if(is_fairness):
         t0 = time.time()
@@ -54,6 +54,8 @@ def compute_metrics(model, n_items, user_id, user_train_items, user_test_items, 
         ranked_list = opt_model.get_fair_ranking()
         t1 = time.time()
         delta = t1-t0
+        if len(ranked_list) < 0:
+            print('erro: IP found no solution')
     else:                
         ranked_list = np.argsort(-y_hat)[:topK]            
         delta = 0
@@ -90,7 +92,7 @@ def compute_metrics(model, n_items, user_id, user_train_items, user_test_items, 
     return _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, delta
 
 
-def evaluate(model, n_items, user_test_relevance, user_train_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def evaluate(model, n_items, user_test_relevance, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     total_ndcg = 0.0
     total_rr = 0.0
     exp_group = np.array([0.0, 0.0])
@@ -102,12 +104,12 @@ def evaluate(model, n_items, user_test_relevance, user_train_items, topK, n_grou
     avg_time = 0.0
 
     for user_id, pos_items in user_test_relevance.items():    
-        if user_id not in user_train_items: 
+        if user_id not in user_train_valid_items: 
             continue
         
         n_user += 1        
-        train_items = user_train_items.get(user_id)
-        _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, _time = compute_metrics(model, n_items, user_id, train_items, pos_items, topK, n_groups, item2group, pop_map, alpha, is_fairness, fairness_constraint)
+        train_valid_items = user_train_valid_items.get(user_id)
+        _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, _time = compute_metrics(model, n_items, user_id, train_valid_items, pos_items, topK, n_groups, item2group, pop_map, alpha, is_fairness, fairness_constraint)
         
 
         total_ndcg += _ndcg
