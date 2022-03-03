@@ -37,6 +37,55 @@ class MFDataset(Dataset):
         return [self.user_id[idx], self.item_id[idx], self.rating[idx]]
 
 
+class MFTrace(nn.Module):
+
+    def __init__(self, num_users, num_items,  tensor, reg=1e-4, emb_size=100):
+        super(MFTrace, self).__init__()
+
+        self.n_users = num_users
+        self.n_items = num_items
+        self.emb_size = emb_size
+
+        self.user_biases = torch.nn.Embedding(self.n_users, 1)
+        self.item_biases = torch.nn.Embedding(self.n_items, 1)
+
+        self.user_emb = nn.Embedding(num_users, emb_size)
+        self.item_emb = nn.Embedding(num_items, emb_size)
+
+        self.tensor = tensor
+        self.reg = torch.tensor(reg)
+
+        nn.init.xavier_normal_(self.user_biases.weight)
+        nn.init.xavier_normal_(self.item_biases.weight)
+        nn.init.xavier_normal_(self.user_emb.weight)
+        nn.init.xavier_normal_(self.item_emb.weight)        
+
+    def forward(self, user, item):
+        pred = self.user_biases(user) + self.item_biases(item)
+        pred += ((self.user_emb(user) * self.item_emb(item)).sum(dim=1, keepdim=True))
+        return pred.squeeze()
+        #return torch.mul(u_emb, i_emb).sum(-1).float()
+
+    def calculate_loss(self, pred, target):
+
+        _a = torch.matmul(self.item_emb.weight.transpose(0,1), self.tensor)
+        _b = torch.matmul(_a, self.item_emb.weight)
+        _c = torch.trace(_b)
+        _d = self.reg*_c
+              
+        loss = (pred - target)**2  + _d
+        return loss.mean()
+
+    def predict(self, user, item):
+        pred = self.forward(user, item)
+        return pred
+
+    def full_predict(self, user):
+        #test_item_emb = self.item_emb.weight.view(self.n_items, 1, self.emb_size)
+        with torch.no_grad():
+            scores = torch.matmul(self.user_emb(user), self.item_emb.weight.transpose(0,1)).transpose(1,0) + self.user_biases(user) + self.item_biases.weight
+            return scores
+
 class MF(nn.Module):
 
     def __init__(self, num_users, num_items, emb_size=100):
@@ -138,7 +187,7 @@ def train_data_loader(model, train_loader, epochs=10, lr=0.001, wd=0, type=None)
             if last_improvement >= require_improvement:
                 break
 
-def find_best_model(train_path, valid_path, test_path, emb_size = 30, n_epochs = 200):
+def find_best_model(train_path, valid_path, test_path, ld_tensor = None, emb_size = 30, n_epochs = 200):
 
     dataset_name = train_path.replace('_train.csv','')
     out_file = open(f'{dataset_name}-mf.log', 'w')
@@ -167,10 +216,16 @@ def find_best_model(train_path, valid_path, test_path, emb_size = 30, n_epochs =
         user_avg_rating[user_id] = np.mean(group['rating'].values)
         user_train_items[user_id] = np.asarray(group['item_id'])
 
+    if ld_tensor is not None:
+        wd = [1e-5, 5e-5, 9e-5]
+
     for _lr in lr:
         for _wd in wd:
 
-            model = MF(n_users, n_items, emb_size=emb_size)
+            if ld_tensor is not None:
+                model = MFTrace(n_users, n_items, ld_tensor, _wd, emb_size=emb_size)
+            else:
+                model = MF(n_users, n_items, emb_size=emb_size)
             
             train_data_loader(model, train_dl, n_epochs, _lr, _wd)
 

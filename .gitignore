@@ -1,2 +1,5 @@
 __pycache__/evaluator.cpython-38.pyc
 __pycache__/mf.cpython-38.pyc
+ml100k-5-2-0.9.out
+ml100k-5-trace.out
+ml100k-5-train.csv-mf.log
