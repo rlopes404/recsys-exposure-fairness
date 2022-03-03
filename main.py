@@ -19,7 +19,7 @@ parser.add_argument('--valid_filename', type=str, default='ml100k-5-valid.csv')
 parser.add_argument('--test_filename', type=str, default='ml100k-5-test.csv')
 parser.add_argument('--topK', type=int, default=20)
 parser.add_argument('--n_groups', type=int, default=2)
-parser.add_argument('--fairness_constraint', type=int, default=1)
+parser.add_argument('--fairness_constraint', type=int, default=2)
 parser.add_argument('--train_mode', type=bool, default=False)
 parser.add_argument('--top_ratio', type=float, default=0.9)
 args = parser.parse_args()
@@ -55,7 +55,7 @@ for user_id, group in train.groupby(['user_id']):
 
 for user_id, group in valid.groupby(['user_id']):
     if user_id in user_train_valid_items:
-         user_train_valid_items[user_id] = np.concatenate((user_train_valid_items[user_id], np.asarray(group['item_id'])), axis=1)      
+         user_train_valid_items[user_id] = np.concatenate((user_train_valid_items[user_id], np.asarray(group['item_id'])), axis=-1)      
 
 def get_items_eval(df):
     user_items = {}
