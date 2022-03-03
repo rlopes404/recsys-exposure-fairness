@@ -77,8 +77,7 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     try:
         # print(f'a. {_pop_group}')
         # print(f'b. {_count_group}')
-        idx = np.where(_count_group < 1)[0]
-        _count_group[idx] = 1
+        idx = np.where(_count_group < 1)[0]        
         _pop_group /= _count_group
         _avg_exp_group = _exp_group/_count_group
         _pop_group[idx] = 0.0
@@ -86,6 +85,7 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     except:
         idx = np.where(_count_group < 1)[0]
         _pop_group[idx] = 0.0
+        _avg_exp_group[idx] = 0.0
 
     _pop /= topK
     _rr = rr(rank_scores)
