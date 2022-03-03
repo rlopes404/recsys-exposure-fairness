@@ -1,6 +1,6 @@
 #wget https://packages.gurobi.com/9.5/gurobi9.5.1_linux64.tar.gz
-# python3 main.py --train_filename ml1m_5_train.csv --valid_filename ml1m_5_valid.csv --test_filename ml1m_5_test.csv --fairness_constraint 1
-# python3 main.py --train_filename ml1m_5_train.csv --valid_filename ml1m_5_valid.csv --test_filename ml1m_5_test.csv --train_mode True
+# python3 main.py --train_filename ml1m-5-train.csv --valid_filename ml1m-5-valid.csv --test_filename ml1m-5-test.csv --fairness_constraint 1
+# python3 main.py --train_filename ml1m-5-train.csv --valid_filename ml1m-5-valid.csv --test_filename ml1m-5-test.csv --train_mode True
 
 from evaluator import evaluate
 from mf import find_best_model

@@ -189,7 +189,7 @@ def train_data_loader(model, train_loader, epochs=10, lr=0.001, wd=0, type=None)
 
 def find_best_model(train_path, valid_path, test_path, ld_tensor = None, emb_size = 30, n_epochs = 200):
 
-    dataset_name = train_path.replace('_train.csv','')
+    dataset_name = train_path.replace('-train.csv','')
     out_file = open(f'{dataset_name}-mf.log', 'w')
 
     train = pd.read_csv(train_path, sep=',')
