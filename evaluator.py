@@ -92,7 +92,7 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     return _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, delta
 
 
-def evaluate(model, n_items, user_test_relevance, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def evaluate(f_name, model, n_items, user_test_relevance, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     total_ndcg = 0.0
     total_rr = 0.0
     exp_group = np.array([0.0, 0.0])
@@ -102,6 +102,35 @@ def evaluate(model, n_items, user_test_relevance, user_train_valid_items, topK, 
     pop = 0.0
     n_user = 0
     avg_time = 0.0
+
+    # ndcg = []
+    # rr = []
+    # exp_group0 = []
+    # exp_group1 = []
+    # avg_exp_group0 = []
+    # avg_exp_group1 = []
+    # count_group0 = []
+    # count_group1 = []
+    # pop_group0 = []
+    # pop_group1 = []
+    # pop = []
+    # time = []
+
+    ndcg = ''
+    rr = ''
+    exp_g0 = ''
+    exp_g1 = ''
+    avg_exp_g0 = ''
+    avg_exp_g1 = ''
+    c_g0 = ''
+    c_g1 = ''
+    p_g0 = ''
+    p_g1 = ''
+
+    _name = f_name.replace('.out', '')
+    f_out = f'{_name}-{alpha[0]}-{1 if is_fairness else 0}.t'
+    out_file = open(f_out, 'w')
+    
 
     for user_id, pos_items in user_test_relevance.items():    
         if user_id not in user_train_valid_items: 
@@ -121,6 +150,43 @@ def evaluate(model, n_items, user_test_relevance, user_train_valid_items, topK, 
         pop += _pop
         avg_time += _time
 
+        ndcg += str(_ndcg)+','
+        rr += str(_rr)+','
+        exp_g0 += str(_exp_group[0])+','
+        exp_g1 += str(_exp_group[1])+','
+        avg_exp_g0 += str(_avg_exp_group[0])+','
+        avg_exp_g1 += str(_avg_exp_group[1])+','
+        c_g0 += str(_count_group[0])+','
+        c_g1 += str(_count_group[1])+','
+        p_g0 += str(_pop_group[0])+','
+        p_g1 += str(_pop_group[1])+','
+
+        # ndcg.append(_ndcg)
+        # rr.append(_rr)
+        # exp_group0.append(_exp_group[0])
+        # exp_group1.append(_exp_group[1])
+        # avg_exp_group0.append(_avg_exp_group[0])
+        # avg_exp_group1.append(_avg_exp_group[1])
+        # count_group0.append(_count_group[0])
+        # count_group1.append(_count_group[1])
+        # pop_group0.append(_pop_group[0])
+        # pop_group1.append(_pop_group[1])
+        # pop.append(_pop)
+        # time.append(_time)
+
+    out_file.write(ndcg+'\n')
+    out_file.write(rr+'\n')
+    out_file.write(exp_g0+'\n')
+    out_file.write(exp_g1+'\n')
+    out_file.write(avg_exp_g0+'\n')
+    out_file.write(avg_exp_g1+'\n')
+    out_file.write(c_g0+'\n')
+    out_file.write(c_g1+'\n')
+    out_file.write(p_g0+'\n')
+    out_file.write(p_g1+'\n')
+    out_file.flush()
+    out_file.close()
+
     total_ndcg /= n_user
     total_rr  /= n_user
     exp_group /= (n_user)
@@ -128,6 +194,6 @@ def evaluate(model, n_items, user_test_relevance, user_train_valid_items, topK, 
     count_group /= n_user
     pop_group /= (n_user)    
     pop /= (n_user)
-
     avg_time /= n_user
+
     return total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time
