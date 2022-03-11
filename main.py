@@ -14,9 +14,9 @@ import numpy as np
 import torch
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train_filename',  type=str, default='ml100k-5-train.csv')
-parser.add_argument('--valid_filename', type=str, default='ml100k-5-valid.csv')
-parser.add_argument('--test_filename', type=str, default='ml100k-5-test.csv')
+parser.add_argument('--train_filename',  type=str, default='ml100k-10-train.csv')
+parser.add_argument('--valid_filename', type=str, default='ml100k-10-valid.csv')
+parser.add_argument('--test_filename', type=str, default='ml100k-10-test.csv')
 parser.add_argument('--topK', type=int, default=20)
 parser.add_argument('--n_groups', type=int, default=2)
 parser.add_argument('--fairness_constraint', type=int, default=2)

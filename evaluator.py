@@ -43,21 +43,30 @@ def ndcg(ranked_relevance, pos_items, at=None):
     return rank_dcg / ideal_dcg    
 
 
-def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items, ranking_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     
-    y_hat = model.full_predict(torch.LongTensor([user_id])).detach().numpy().squeeze()   
-    y_hat[train_valid_items] = -sys.maxsize # user
+    #y_hat = model.full_predict(torch.LongTensor([user_id])).detach().numpy().squeeze()   
+    #y_hat[train_valid_items] = -sys.maxsize # user
+
+    y_hat = model.subset_predict(torch.LongTensor(np.array([user_id])), torch.LongTensor(ranking_items)).detach().numpy().squeeze()   
+    
 
     if(is_fairness):
         t0 = time.time()
-        opt_model = FairnessMF(n_items, y_hat, n_groups, item2group, topK, alpha, fairness_constraint) #n_items, costs, n_groups, item2group, topK, alpha
-        ranked_list = opt_model.get_fair_ranking()
+        print(ranking_items)
+        print(y_hat)
+        opt_model = FairnessMF(len(ranking_items), y_hat, n_groups, item2group, topK, alpha, fairness_constraint) #n_items, costs, n_groups, item2group, topK, alpha
+        _res = opt_model.get_fair_ranking()
+        print(_res)
+        ranked_list = ranking_items[_res]
+        print('ranked_list')
+        print(ranked_list)
         t1 = time.time()
         delta = t1-t0
         if len(ranked_list) < 0:
             print('erro: IP found no solution')
     else:                
-        ranked_list = np.argsort(-y_hat)[:topK]            
+        ranked_list = ranking_items[np.argsort(-y_hat)[:topK]]
         delta = 0
 
     _exp_group = np.array([0.0, 0.0])
@@ -71,6 +80,8 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
         _pop += pop_map[item]
 
     rank_scores = np.asarray([item in user_test_items for item in ranked_list])
+    print('rank_scores')
+    print(rank_scores)
     _test_items = np.array(list(user_test_items))
     _ndcg = ndcg(rank_scores.astype(int), _test_items, at=topK)
 
@@ -92,7 +103,7 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     return _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, delta
 
 
-def evaluate(f_name, model, n_items, user_test_relevance, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def evaluate(f_name, model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     total_ndcg = 0.0
     total_rr = 0.0
     exp_group = np.array([0.0, 0.0])
@@ -131,14 +142,27 @@ def evaluate(f_name, model, n_items, user_test_relevance, user_train_valid_items
     f_out = f'{_name}-{alpha[0]}-{1 if is_fairness else 0}.t'
     out_file = open(f_out, 'w')
     
-
-    for user_id, pos_items in user_test_relevance.items():    
+    sampling_factor = 2
+    
+    for user_id, pos_items in test_user_relevant_items.items():    
         if user_id not in user_train_valid_items: 
             continue
         
         n_user += 1        
         train_valid_items = user_train_valid_items.get(user_id)
-        _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, _time = compute_metrics(model, n_items, user_id, train_valid_items, pos_items, topK, n_groups, item2group, pop_map, alpha, is_fairness, fairness_constraint)
+        _pos_items_array = np.asarray(list(pos_items))      
+
+        n_items_sample = 100 + sampling_factor*len(_pos_items_array)
+
+        probs = np.ones(n_items)     
+        probs[train_valid_items] = 0.0  
+        probs[_pos_items_array] = 0.0
+        probs = probs / (n_items - (len(train_valid_items) + len(_pos_items_array)))     
+
+        ranking_items = np.random.choice(n_items, size=n_items_sample, replace=False, p=probs)
+        ranking_items = np.concatenate((ranking_items, _pos_items_array), axis=-1)
+     
+        _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, _time = compute_metrics(model, n_items, user_id, train_valid_items, pos_items, ranking_items, topK, n_groups, item2group, pop_map, alpha, is_fairness, fairness_constraint)
         
 
         total_ndcg += _ndcg

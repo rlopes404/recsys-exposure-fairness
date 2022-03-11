@@ -36,6 +36,11 @@ class MFBiased(nn.Module):
         pred = self.forward(user, item)
         return pred
 
+    def subset_predict(self, user, items):
+        with torch.no_grad():
+            scores = torch.matmul(self.user_emb(user), self.item_emb(items).transpose(0,1)).transpose(1,0) + self.user_biases(user) + self.item_biases(items)
+            return scores 
+
     def full_predict(self, user):
         #test_item_emb = self.item_emb.weight.view(self.n_items, 1, self.emb_size)
         with torch.no_grad():
