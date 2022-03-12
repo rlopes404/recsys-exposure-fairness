@@ -45,7 +45,7 @@ def ndcg(ranked_relevance, pos_items, at=None):
 
 def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     
-    y_hat = model.full_predict(torch.LongTensor([user_id])).detach().numpy().squeeze()   
+    y_hat = model.full_predict(user_id)
     y_hat[train_valid_items] = -sys.maxsize # user
 
     if(is_fairness):
