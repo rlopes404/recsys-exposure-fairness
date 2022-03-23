@@ -1,6 +1,6 @@
 import pandas as pd
 
-threshold = 5
+threshold = 10
 #df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
 #output = f'ml100k-{threshold}'
 

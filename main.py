@@ -1,6 +1,7 @@
-#wget https://packages.gurobi.com/9.5/gurobi9.5.1_linux64.tar.gz
+# wget https://packages.gurobi.com/9.5/gurobi9.5.1_linux64.tar.gz
 # python3 main.py --train_filename ml1m-5-train.csv --valid_filename ml1m-5-valid.csv --test_filename ml1m-5-test.csv --fairness_constraint 1
 # python3 main.py --train_filename ml1m-5-train.csv --valid_filename ml1m-5-valid.csv --test_filename ml1m-5-test.csv --train_mode True
+# pip3 install gurobipy torch pandas numpy
 
 from evaluator import evaluate
 from trainer import find_best_model
