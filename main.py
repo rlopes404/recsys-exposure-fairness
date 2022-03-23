@@ -71,7 +71,10 @@ def get_items_eval(df):
 
             idx = group['rating'] > user_avg_rating[user_id]
             if idx.sum() > 0:        
-                user_relevant_items[user_id] = set(group.loc[idx, 'item_id'])
+                #TODO peguei o ultimo item relevante no teste
+                #user_relevant_items[user_id] = set(group.loc[idx, 'item_id'])
+                _items = group.loc[idx, 'item_id'].values                
+                user_relevant_items[user_id] = set([_items[-1]])
                 
     return user_items, user_relevant_items
     
@@ -161,16 +164,17 @@ else:
     
     top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
     
+    cuttoff = int(len(top_train)*top_ratio)
+    item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
+    group2item = {0: top_train[:cuttoff]['item_id'].values, 1: top_train[cuttoff:]['item_id'].values}
+
     for alpha in alpha_values:
         alpha_vector = [alpha]*n_groups
         
         print(f'{top_ratio} {alpha}')
-
-        cuttoff = int(len(top_train)*top_ratio)
-        item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
     
         # unfair ranking
-        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
+        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, False, fairness_constraint)
         
         #print(ndcg1, mrr1, rank_group1, count_group1)
         #with open(f'{unfair_name}.out', 'w') as out_file:
@@ -178,7 +182,7 @@ else:
         out_file.write(s)  
         out_file.flush()
 
-        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(f_name, best_model, n_items,test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, True, fairness_constraint)
+        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(f_name, best_model, n_items,test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, True, fairness_constraint)
 
 
         s = f'{top_ratio:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'

@@ -50,20 +50,17 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
 
     y_hat = model.subset_predict(torch.LongTensor(np.array([user_id])), torch.LongTensor(ranking_items)).detach().numpy().squeeze()   
     
+    assert len(y_hat) == len(ranking_items)
 
     if(is_fairness):
         t0 = time.time()
-        print(ranking_items)
-        print(y_hat)
-        opt_model = FairnessMF(len(ranking_items), y_hat, n_groups, item2group, topK, alpha, fairness_constraint) #n_items, costs, n_groups, item2group, topK, alpha
+
+        opt_model = FairnessMF(ranking_items, y_hat, n_groups, item2group, topK, alpha, fairness_constraint) #n_items, costs, n_groups, item2group, topK, alpha
         _res = opt_model.get_fair_ranking()
-        print(_res)
         ranked_list = ranking_items[_res]
-        print('ranked_list')
-        print(ranked_list)
         t1 = time.time()
         delta = t1-t0
-        if len(ranked_list) < 0:
+        if len(ranked_list) < 1:
             print('erro: IP found no solution')
     else:                
         ranked_list = ranking_items[np.argsort(-y_hat)[:topK]]
@@ -79,15 +76,11 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
         _pop_group[item2group[item]] += pop_map[item]
         _pop += pop_map[item]
 
-    rank_scores = np.asarray([item in user_test_items for item in ranked_list])
-    print('rank_scores')
-    print(rank_scores)
+    rank_scores = np.asarray([item in user_test_items for item in ranked_list])    
     _test_items = np.array(list(user_test_items))
     _ndcg = ndcg(rank_scores.astype(int), _test_items, at=topK)
 
     try:
-        # print(f'a. {_pop_group}')
-        # print(f'b. {_count_group}')
         idx = np.where(_count_group < 1)[0]        
         _pop_group /= _count_group
         _avg_exp_group = _exp_group/_count_group
@@ -103,7 +96,7 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     return _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, delta
 
 
-def evaluate(f_name, model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha, is_fairness=False, fairness_constraint=1):
+def evaluate(f_name, model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha, is_fairness=False, fairness_constraint=1):
     total_ndcg = 0.0
     total_rr = 0.0
     exp_group = np.array([0.0, 0.0])
@@ -140,9 +133,7 @@ def evaluate(f_name, model, n_items, test_user_relevant_items, user_train_valid_
 
     _name = f_name.replace('.out', '')
     f_out = f'{_name}-{alpha[0]}-{1 if is_fairness else 0}.t'
-    out_file = open(f_out, 'w')
-    
-    sampling_factor = 2
+    out_file = open(f_out, 'w')       
     
     for user_id, pos_items in test_user_relevant_items.items():    
         if user_id not in user_train_valid_items: 
@@ -151,15 +142,30 @@ def evaluate(f_name, model, n_items, test_user_relevant_items, user_train_valid_
         n_user += 1        
         train_valid_items = user_train_valid_items.get(user_id)
         _pos_items_array = np.asarray(list(pos_items))      
+        
+        n0 = 50
+        n1 = 50
 
-        n_items_sample = 100 + sampling_factor*len(_pos_items_array)
-
+        # group 0
         probs = np.ones(n_items)     
         probs[train_valid_items] = 0.0  
         probs[_pos_items_array] = 0.0
-        probs = probs / (n_items - (len(train_valid_items) + len(_pos_items_array)))     
+        probs[group2item[1]] = 0.0            
+        probs = probs / np.sum(probs)
+        ranking_items_g0 = np.random.choice(n_items, size=n0, replace=False, p=probs)
 
-        ranking_items = np.random.choice(n_items, size=n_items_sample, replace=False, p=probs)
+              
+        # group 0
+        probs = np.ones(n_items)     
+        probs[train_valid_items] = 0.0  
+        probs[_pos_items_array] = 0.0
+        probs[group2item[0]] = 0.0       
+        probs = probs / np.sum(probs)
+        ranking_items_g1 = np.random.choice(n_items, size=n1, replace=False, p=probs)
+        
+
+        
+        ranking_items = np.concatenate((ranking_items_g0, ranking_items_g1), axis=-1)
         ranking_items = np.concatenate((ranking_items, _pos_items_array), axis=-1)
      
         _ndcg, _rr, _exp_group, _avg_exp_group, _count_group, _pop_group, _pop, _time = compute_metrics(model, n_items, user_id, train_valid_items, pos_items, ranking_items, topK, n_groups, item2group, pop_map, alpha, is_fairness, fairness_constraint)

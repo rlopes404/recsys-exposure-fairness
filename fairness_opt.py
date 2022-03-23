@@ -3,8 +3,8 @@ import gurobipy as gp
 from gurobipy import GRB
 
 class FairnessMF():
-    def __init__(self, n_items, costs, n_groups, item2group, topK, alpha, fairness_constraint=1):
-        self.n_items = n_items
+    def __init__(self, ranking_items, costs, n_groups, item2group, topK, alpha, fairness_constraint=1):
+        self.ranking_items = ranking_items
         self.K = topK
         self.n_groups = n_groups
         self.item2group = item2group
@@ -25,7 +25,7 @@ class FairnessMF():
     def _create_model(self, fairness_constraint):
 
         # cost function
-        for i in range(self.n_items):
+        for i in range(len(self.ranking_items)):
             self.x.append([])
             for k in range(self.K):
                 _cost = self.costs[i]*self.p_click(k)
@@ -35,10 +35,10 @@ class FairnessMF():
 
         # there must be one item in each position
         for k in range(self.K):
-            self.model.addConstr(sum(self.x[i][k] for i in range(self.n_items)) == 1, f'knapsack_{k}')
+            self.model.addConstr(sum(self.x[i][k] for i in range(len(self.ranking_items))) == 1, f'knapsack_{k}')
 
         # each item occupies at most one position 
-        for i in range(self.n_items):
+        for i in range(len(self.ranking_items)):
             self.model.addConstr(sum(self.x[i][k] for k in range(self.K)) <= 1, f'upper_bound_item[{i}]')
 
         if(fairness_constraint == 1):
@@ -52,14 +52,14 @@ class FairnessMF():
          # fairness_constraint
         total_exposure = np.sum([self.p_click(k) for k in range(self.K)])              
         for g in range(self.n_groups):
-            self.model.addConstr(sum(self.x[i][k]*self.is_item_in_group(i, g)*self.p_click(k) for i in range(self.n_items) for k in range(self.K)) >= self.alpha[g]*total_exposure, f'fairness_constraint_1[{g}]')   
+            self.model.addConstr(sum(self.x[idx][k]*self.is_item_in_group(item_id, g)*self.p_click(k) for idx, item_id in enumerate(self.ranking_items) for k in range(self.K)) >= self.alpha[g]*total_exposure, f'fairness_constraint_1[{g}]')   
 
     def _fairness_constraint2(self):
         adv_group = 0
-        adv_const = sum(self.x[i][k]*self.is_item_in_group(i, adv_group)*self.p_click(k) for i in range(self.n_items) for k in range(self.K))
+        adv_const = sum(self.x[idx][k]*self.is_item_in_group(item_id, adv_group)*self.p_click(k) for idx, item_id in enumerate(self.ranking_items) for k in range(self.K))
 
         dis_group = 1
-        dis_const = sum(self.x[i][k]*self.is_item_in_group(i, dis_group)*self.p_click(k) for i in range(self.n_items) for k in range(self.K))
+        dis_const = sum(self.x[idx][k]*self.is_item_in_group(item_id, dis_group)*self.p_click(k) for idx, item_id in enumerate(self.ranking_items) for k in range(self.K))
 
         self.model.addConstr(dis_const >= self.alpha[dis_group]*adv_const, f'fairness_constraint_2')       
     
@@ -78,9 +78,10 @@ class FairnessMF():
         if self.model.status == GRB.OPTIMAL:
             solution = np.repeat(-1, self.K)
             for k in range(self.K):
-                for i in range(self.n_items):
+                for i in range(len(self.ranking_items)):
                     if self.x[i][k].X > 0.99:
                         solution[k] = i
             return solution
         else:
+            print('no solution!')
             return []
