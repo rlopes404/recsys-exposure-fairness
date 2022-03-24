@@ -7,7 +7,10 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
+from itemKnn import ItemKnn
+
 import pickle
+import math
 
 import pandas as pd
 import numpy as np
@@ -156,3 +159,58 @@ def find_best_model(train_path, valid_path, test_path, ld_tensor = None, emb_siz
     filename = train_path.replace('-train.csv','')
     pickle.dump(best_model, open(f'{filename}.pkl', 'wb'))
     return best_model
+
+def find_best_knn_model(train_path, valid_path, test_path):
+
+    dataset_name = train_path.replace('-train.csv','')
+    out_file = open(f'{dataset_name}-knn.log', 'w')
+
+    train = pd.read_csv(train_path, sep=',')
+    valid = pd.read_csv(valid_path, sep=',')
+    test = pd.read_csv(test_path, sep=',')
+
+
+    n_users = pd.concat([train['user_id'], valid['user_id'], test['user_id']]).nunique()
+    n_items = pd.concat([train['item_id'], valid['item_id'], test['item_id']]).nunique()
+
+    item_ids = np.arange(n_items)
+    
+
+    nnbrs_values = [5, 10, 50]
+    min_nbrs_values = [1, 5, 10]
+
+    best_model = None
+    best_val_error = float('inf')
+
+    
+
+    for nnbrs in nnbrs_values:
+        for min_nbrs in min_nbrs_values:
+
+            model = ItemKnn(nnbrs, min_nbrs, train, item_ids)           
+
+            mse1 = 0.0
+            for user_id,group in valid.groupby('user_id'):
+                preds = model.full_predict(user_id)
+                                             
+                true_ratings = group['rating'].values
+                pred_ratings = preds[group['item_id'].values] 
+                error = np.sum((true_ratings - pred_ratings)**2)                      
+                if math.isnan(error):
+                    print(true_ratings)
+                    print(pred_ratings)
+                mse1 += error
+                
+            s = f'{nnbrs:.6f},{min_nbrs:.6f},{mse1:.4f}\n'
+            out_file.write(s)
+
+            if mse1 < best_val_error:
+                best_model = model
+                best_val_error = mse1              
+          
+    out_file.flush()
+    out_file.close()
+    
+    filename = train_path.replace('-train.csv','')
+    pickle.dump(best_model, open(f'{filename}-knn.pkl', 'wb'))
+    return best_model    

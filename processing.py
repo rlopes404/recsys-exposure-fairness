@@ -1,8 +1,8 @@
 import pandas as pd
 
 threshold = 10
-#df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
-#output = f'ml100k-{threshold}'
+df = pd.read_csv('/home/ramon/Downloads/ml-100k/u.data', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
+output = f'ml100k-{threshold}'
 
 # df = pd.read_csv('/home/ramon/Downloads/ml-1m/ratings.dat', header=None, names=['user', 'item', 'rating', 'timestamp'], sep='::')
 # output = f'ml1m-{threshold}'
@@ -17,9 +17,9 @@ threshold = 10
 # df = pd.read_csv('/home/ramon/Downloads/amazon/ratings_Home_and_Kitchen.csv', header=None, names=['user', 'item', 'rating', 'timestamp'], sep=',')
 # output = f'home-{threshold}'
 
-df = pd.read_csv('/home/ramon/Downloads/Douban-movies/movie/douban_movie.tsv', header=0, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
-df = df[df['rating'] > -1]
-output = f'douban-{threshold}'
+#df = pd.read_csv('/home/ramon/Downloads/Douban-movies/movie/douban_movie.tsv', header=0, names=['user', 'item', 'rating', 'timestamp'], sep='\t')
+#df = df[df['rating'] > -1]
+#output = f'douban-{threshold}'
 
 
 df = df.drop_duplicates(subset=['user','item', 'timestamp']).sort_values(by=['timestamp']).reset_index(drop=True)

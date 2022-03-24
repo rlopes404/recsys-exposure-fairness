@@ -48,7 +48,9 @@ def compute_metrics(model, n_items, user_id, train_valid_items, user_test_items,
     #y_hat = model.full_predict(torch.LongTensor([user_id])).detach().numpy().squeeze()   
     #y_hat[train_valid_items] = -sys.maxsize # user
 
-    y_hat = model.subset_predict(torch.LongTensor(np.array([user_id])), torch.LongTensor(ranking_items)).detach().numpy().squeeze()   
+    #y_hat = model.subset_predict(torch.LongTensor(np.array([user_id])), torch.LongTensor(ranking_items)).detach().numpy().squeeze()   
+
+    y_hat = model.subset_predict(user_id, ranking_items)
     
     assert len(y_hat) == len(ranking_items)
 

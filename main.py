@@ -3,8 +3,8 @@
 # python3 main.py --train_filename ml1m-5-train.csv --valid_filename ml1m-5-valid.csv --test_filename ml1m-5-test.csv --train_mode True
 
 from evaluator import evaluate
-from trainer import find_best_model
-
+from trainer import find_best_model, find_best_knn_model
+from itemKnn import ItemKnn
 import os 
 import pickle
 import argparse
@@ -23,6 +23,7 @@ parser.add_argument('--fairness_constraint', type=int, default=2)
 parser.add_argument('--train_mode', type=bool, default=False)
 parser.add_argument('--top_ratio', type=float, default=0.9)
 parser.add_argument('--trace', type=bool, default=False)
+parser.add_argument('--is_knn', type=bool, default=False)
 args = parser.parse_args()
 
 train_filename = args.train_filename
@@ -34,6 +35,7 @@ fairness_constraint = args.fairness_constraint
 train_mode = args.train_mode
 top_ratio = args.top_ratio
 trace = args.trace
+is_knn = args.is_knn
 
 dataset_name = train_filename.replace('-train.csv','')
 
@@ -147,15 +149,58 @@ def run_trace(top_ratio):
     out_file.flush()    
     out_file.close()
 
+def run_alpha(topK, n_groups, fairness_constraint, top_ratio, n_items, user_train_valid_items, test_user_relevant_items, pop_map, best_model, f_name, out_file, item2group, group2item, alpha):
+    alpha_vector = [alpha]*n_groups
+        
+    print(f'{top_ratio} {alpha}')    
+        
+        # unfair ranking
+    ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, False, fairness_constraint)
+        
+        #print(ndcg1, mrr1, rank_group1, count_group1)
+        #with open(f'{unfair_name}.out', 'w') as out_file:
+    s = f'{top_ratio:.4f},{alpha:.4f},{ndcg1:.4f},{mrr1:.4f},{exp_group1[0]:.4f},{exp_group1[1]:.4f},{avg_exp_group1[0]:.4f},{avg_exp_group1[1]:.4f},{count_group1[0]:.4f},{count_group1[1]:.4f},{pop_group1[0]:.4f},{pop_group1[1]:.4f},{pop:.4f},0\n'
+    out_file.write(s)  
+    out_file.flush()
+
+    total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(f_name, best_model, n_items,test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, True, fairness_constraint)
+
+
+    s = f'{top_ratio:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'
+    out_file.write(s)
+    out_file.flush()
+
 if train_mode:
     best_model = find_best_model(train_filename, valid_filename, test_filename)
 elif trace:
     run_trace(top_ratio)
+elif is_knn:
+    best_model = None
+    try:
+        best_model =  pickle.load(open(train_filename.replace('-train.csv', '-knn.pkl'), 'rb')) 
+    except:
+        best_model = find_best_knn_model(train_filename, valid_filename, test_filename)
+
+    f_name = f'{dataset_name}-knn-{top_ratio}-{fairness_constraint}.out'
+    out_file = open(f_name, 'w')
+    out_file.write('top_ratio,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
+    out_file.flush()
+
+    top_train = train.groupby(['item_id']).agg(count=('user_id', 'count')).reset_index().sort_values(by=['count'], ascending=False)
+    
+
+    cuttoff = int(len(top_train)*top_ratio)
+    item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
+    group2item = {0: top_train[:cuttoff]['item_id'].values, 1: top_train[cuttoff:]['item_id'].values}
+
+    for alpha in alpha_values:
+        run_alpha(topK, n_groups, fairness_constraint, top_ratio, n_items, user_train_valid_items, test_user_relevant_items, pop_map, best_model, f_name, out_file, item2group, group2item, alpha)
+
+    out_file.flush()
+    out_file.close()
 else:    
     best_model =  pickle.load(open(train_filename.replace('-train.csv', '.pkl'), 'rb')) 
-    
-    #unfair_file = open(f'unfair_{dataset_name}.out', 'w')
-    #fair_file = open(f'fair_{dataset_name}.out', 'w')
+        
     f_name = f'{dataset_name}-{top_ratio}-{fairness_constraint}.out'
     out_file = open(f_name, 'w')
     out_file.write('top_ratio,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
@@ -169,25 +214,7 @@ else:
     group2item = {0: top_train[:cuttoff]['item_id'].values, 1: top_train[cuttoff:]['item_id'].values}
 
     for alpha in alpha_values:
-        alpha_vector = [alpha]*n_groups
-        
-        print(f'{top_ratio} {alpha}')
-    
-        # unfair ranking
-        ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, False, fairness_constraint)
-        
-        #print(ndcg1, mrr1, rank_group1, count_group1)
-        #with open(f'{unfair_name}.out', 'w') as out_file:
-        s = f'{top_ratio:.4f},{alpha:.4f},{ndcg1:.4f},{mrr1:.4f},{exp_group1[0]:.4f},{exp_group1[1]:.4f},{avg_exp_group1[0]:.4f},{avg_exp_group1[1]:.4f},{count_group1[0]:.4f},{count_group1[1]:.4f},{pop_group1[0]:.4f},{pop_group1[1]:.4f},{pop:.4f},0\n'
-        out_file.write(s)  
-        out_file.flush()
-
-        total_ndcg, total_rr, exp_group, avg_exp_group, count_group, pop_group, pop, avg_time = evaluate(f_name, best_model, n_items,test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, group2item, pop_map, alpha_vector, True, fairness_constraint)
-
-
-        s = f'{top_ratio:.4f},{alpha:.4f},{total_ndcg:.4f},{total_rr:.4f},{exp_group[0]:.4f},{exp_group[1]:.4f},{avg_exp_group[0]:.4f},{avg_exp_group[1]:.4f},{count_group[0]:.4f},{count_group[1]:.4f},{pop_group[0]:.4f},{pop_group[1]:.4f},{pop:.4f},{avg_time:.4f}\n'
-        out_file.write(s)
-        out_file.flush()
+        run_alpha(topK, n_groups, fairness_constraint, top_ratio, n_items, user_train_valid_items, test_user_relevant_items, pop_map, best_model, f_name, out_file, item2group, group2item, alpha)
 
     out_file.flush()
     out_file.close()
