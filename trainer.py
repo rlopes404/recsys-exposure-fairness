@@ -191,7 +191,7 @@ def find_best_knn_model(train_path, valid_path, test_path):
 
             mse1 = 0.0
             for user_id,group in valid.groupby('user_id'):
-                preds = model.full_predict(user_id).values
+                preds = model.full_predict(user_id)
                                              
                 true_ratings = group['rating'].values
                 pred_ratings = preds[group['item_id'].values] 

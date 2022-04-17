@@ -48,10 +48,10 @@ n_items = train['item_id'].nunique()
 
 if fairness_constraint == 1:
     #alpha_values = [0.1, 0.2, 0.3, 0.4] 
-    alpha_values = [0.2, 0.3, 0.4] 
+    alpha_values = [0.2, 0.4] 
 elif fairness_constraint == 2:
     #alpha_values = [0.9, 0.7, 0.5, 0.3, 0.1]
-    alpha_values = [0.9, 0.6, 0.3]
+    alpha_values = [0.9, 0.3]
 else:
     print('fairness constraint is invalid!')    
 
@@ -158,7 +158,8 @@ elif is_knn:
     except:
         best_model = find_best_knn_model(train_filename, valid_filename, test_filename)
 
-    f_name = f'{dataset_name}-knn-{top_ratio}.out'
+    #f_name = f'{dataset_name}-knn-{top_ratio}.out'
+    f_name = f'{dataset_name}-knn-{top_ratio}-{fairness_constraint}.out'
     out_file = open(f_name, 'w')
     out_file.write('top_ratio,alpha,ndcg,mrr,exp_0,exp_1,avg_exp_0,avg_exp_1,count_0,count_1,pop_0,pop_1,pop,time\n')
     out_file.flush()
