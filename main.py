@@ -44,6 +44,10 @@ test = pd.read_csv(test_filename, sep=',')
 
 n_items = train['item_id'].nunique()
 
+
+if 'group' in train.columns:
+    item2group = {row.item_id : row.group for row in train.itertuples()}    
+
 if fairness_constraint == 1:
     #alpha_values = [0.1, 0.2, 0.3, 0.4] 
     alpha_values = [0.2, 0.3, 0.4] 
@@ -167,8 +171,9 @@ else:
         
         print(f'{top_ratio} {alpha}')
 
-        cuttoff = int(len(top_train)*top_ratio)
-        item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
+        if 'group' not in train.columns:
+            cuttoff = int(len(top_train)*top_ratio)
+            item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
     
         # unfair ranking
         ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
