@@ -15,16 +15,16 @@ import numpy as np
 import torch
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train_filename',  type=str, default='ml100k-5-train.csv')
-parser.add_argument('--valid_filename', type=str, default='ml100k-5-valid.csv')
-parser.add_argument('--test_filename', type=str, default='ml100k-5-test.csv')
+parser.add_argument('--train_filename',  type=str, default='ml1m-director-5-train.csv')
+parser.add_argument('--valid_filename', type=str, default='ml1m-director-5-valid.csv')
+parser.add_argument('--test_filename', type=str, default='ml1m-director-5-test.csv')
 parser.add_argument('--topK', type=int, default=20)
 parser.add_argument('--n_groups', type=int, default=2)
 parser.add_argument('--fairness_constraint', type=int, default=2)
 parser.add_argument('--train_mode', type=bool, default=False)
 parser.add_argument('--top_ratio', type=float, default=0.9)
 parser.add_argument('--trace', type=bool, default=False)
-parser.add_argument('--is_knn', type=bool, default=False)
+parser.add_argument('--is_knn', type=bool, default=True)
 args = parser.parse_args()
 
 train_filename = args.train_filename
@@ -45,6 +45,9 @@ valid = pd.read_csv(valid_filename, sep=',')
 test = pd.read_csv(test_filename, sep=',')
 
 n_items = train['item_id'].nunique()
+
+if 'group' in train.columns:	
+    item2group = {row.item_id : row.group for row in train.itertuples()} 
 
 if fairness_constraint == 1:
     #alpha_values = [0.1, 0.2, 0.3, 0.4] 
@@ -170,8 +173,9 @@ elif is_knn:
         
         print(f'{top_ratio} {alpha}')
 
-        cuttoff = int(len(top_train)*top_ratio)
-        item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
+        if 'group' not in train.columns:
+            cuttoff = int(len(top_train)*top_ratio)
+            item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
         
         # unfair ranking
         ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
@@ -208,10 +212,10 @@ else:
         alpha_vector = [alpha]*n_groups
         
         print(f'{top_ratio} {alpha}')
-
-        cuttoff = int(len(top_train)*top_ratio)
-        item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }
-    
+        if 'group' not in train.columns:	
+            cuttoff = int(len(top_train)*top_ratio)	
+            item2group = {item_id : 0 if idx < cuttoff else 1  for idx, item_id  in enumerate(top_train['item_id'].values) }    
+        
         # unfair ranking
         ndcg1, mrr1, exp_group1, avg_exp_group1, count_group1, pop_group1, pop, avg_time = evaluate(f_name, best_model, n_items, test_user_relevant_items, user_train_valid_items, topK, n_groups, item2group, pop_map, alpha_vector, False, fairness_constraint)
         
